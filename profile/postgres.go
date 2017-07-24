@@ -1,4 +1,4 @@
-package gameprofile
+package profile
 
 import pg "gopkg.in/pg.v4"
 
@@ -10,9 +10,9 @@ type PostgresStore struct {
 // NewPostgresStore ensures the required database tables exist and returns an initialized PostgresStore.
 func NewPostgresStore(db *pg.DB) *PostgresStore {
 	_, err := db.Exec(`CREATE TABLE IF NOT EXISTS profiles (
-    id TEXT PRIMARY KEY,
-    coins BIGINT,
-    inventory JSONB,
+		id TEXT PRIMARY KEY,
+    	coins BIGINT,
+    	inventory JSONB,
 		equipment JSONB
     )`)
 	if err != nil {
@@ -22,12 +22,12 @@ func NewPostgresStore(db *pg.DB) *PostgresStore {
 	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS punishments (
 		id BIGSERIAL,
 		player_id TEXT NOT NULL,
-    by TEXT NOT NULL,
-    type TEXT NOT NULL,
-    reason TEXT,
-    date TIMESTAMP,
-    expires TIMESTAMP,
-    PRIMARY KEY(id, type)
+    	by TEXT NOT NULL,
+    	type TEXT NOT NULL,
+    	reason TEXT,
+    	date TIMESTAMP,
+    	expires TIMESTAMP,
+    	PRIMARY KEY(id, type)
     )`)
 	if err != nil {
 		panic(err)

@@ -1,4 +1,4 @@
-package gameprofile
+package profile
 
 import "time"
 
@@ -23,13 +23,13 @@ type Punishment struct {
 
 // Storer defines the behavior of a Profile Store.
 type Storer interface {
-	GetProfile(string) (Profile, error)
+	GetProfile(steamid string) (Profile, error)
 	PutProfile(Profile) error
 
 	//GetCoins(string) int64
 	//PutCoins(string, int64) int64
 
-	GetPunishments(string) (map[string]Punishment, error)
+	GetPunishments(steamid string) (map[string]Punishment, error)
 	PutPunishment(Punishment) error
-	DelPunishment(int64) error
+	DelPunishment(pid int64) error
 }

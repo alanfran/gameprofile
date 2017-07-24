@@ -1,4 +1,4 @@
-package gameprofile
+package profile
 
 import (
 	"strconv"
@@ -38,13 +38,13 @@ func init() {
 	nt = NewPostgresStore(db)
 }
 
-func TestProfile(t *testing.T) {
+func TestProfilePg(t *testing.T) {
 	id := "example steamid"
 	coins := int64(64)
 	inventory := map[string]string{"key": "value"}
 	equip := map[string]string{"head": "cowboy hat"}
 
-	err := nt.PutProfile(Profile{id, coins, inventory, equip})
+	err := nt.PutProfile(Profile{ID: id, Coins: coins, Inventory: inventory, Equipment: equip})
 	if err != nil {
 		t.Error(err)
 	}
@@ -58,7 +58,7 @@ func TestProfile(t *testing.T) {
 	}
 }
 
-func TestPunishment(t *testing.T) {
+func TestPunishmentPg(t *testing.T) {
 	steamid := "example id"
 	by := "someAdmin"
 	typ := "rubber hammer"
