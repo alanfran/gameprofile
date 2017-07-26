@@ -79,66 +79,7 @@ var _ = Describe("Game profile microservice", func() {
 			})
 
 			Context("POST", func() {
-				Context("When the profile exists", func() {
-					BeforeEach(func() {
-						Expect(app.profiles.PutProfile(testProfile)).To(Succeed())
-					})
-
-					Context("and the hash is valid", func() {
-						It("Returns 200 OK and returns the new ProfileWithHash", func() {
-							pwh := NewProfileWithHash(testProfile)
-							pwh.Coins = 9999
-
-							postJSON, err := json.Marshal(pwh)
-							Expect(err).ToNot(HaveOccurred())
-
-							req, err := http.NewRequest("POST", "/"+testProfile.ID, bytes.NewBuffer(postJSON))
-							Expect(err).ToNot(HaveOccurred())
-							req.Header.Set("Content-Type", "application/json")
-							app.engine.ServeHTTP(resp, req)
-
-							result := resp.Result()
-							Expect(result.StatusCode).To(Equal(http.StatusOK))
-
-							body, err := ioutil.ReadAll(resp.Body)
-							Expect(err).ToNot(HaveOccurred())
-
-							var profileWithHash ProfileWithHash
-							err = json.Unmarshal(body, &profileWithHash)
-							Expect(err).ToNot(HaveOccurred())
-
-							Expect(profileWithHash.Hash).ToNot(BeZero())
-							Expect(profileWithHash.Hash).ToNot(Equal(pwh.Hash))
-							Expect(profileWithHash.Coins).To(Equal(pwh.Coins))
-						})
-					})
-
-					Context("and the hash is invalid", func() {
-						It("returns 409 Conflict along with the new ProfileWithHash", func() {
-							postJSON, err := json.Marshal(testProfile)
-							Expect(err).ToNot(HaveOccurred())
-
-							req, err := http.NewRequest("POST", "/"+testProfile.ID, bytes.NewBuffer(postJSON))
-							Expect(err).ToNot(HaveOccurred())
-							req.Header.Set("Content-Type", "application/json")
-							app.engine.ServeHTTP(resp, req)
-
-							result := resp.Result()
-							Expect(result.StatusCode).To(Equal(http.StatusConflict))
-
-							body, err := ioutil.ReadAll(resp.Body)
-							Expect(err).ToNot(HaveOccurred())
-
-							var profileWithHash ProfileWithHash
-							err = json.Unmarshal(body, &profileWithHash)
-							Expect(err).ToNot(HaveOccurred())
-
-							Expect(profileWithHash.Hash).ToNot(BeZero())
-						})
-					})
-				})
-
-				Context("When the profile does not exist", func() {
+				Context("When there is no profile with that SteamID", func() {
 					It("returns 201 Created along with the new ProfileWithHash", func() {
 						postJSON, err := json.Marshal(testProfile)
 						Expect(err).ToNot(HaveOccurred())
@@ -164,6 +105,75 @@ var _ = Describe("Game profile microservice", func() {
 						err = json.Unmarshal(body, &profileWithoutHash)
 						Expect(err).ToNot(HaveOccurred())
 						Expect(profileWithoutHash).To(Equal(testProfile))
+					})
+				})
+
+				Context("When a profile with that SteamID already exists", func() {
+					BeforeEach(func() {
+						Expect(app.profiles.PutProfile(testProfile)).To(Succeed())
+					})
+
+					PIt("returns 490 Conflict along with the current ProfileWithHash", func() {
+
+					})
+				})
+			})
+
+			Context("PUT", func() {
+				BeforeEach(func() {
+					Expect(app.profiles.PutProfile(testProfile)).To(Succeed())
+				})
+
+				Context("When the hash is valid", func() {
+					It("returns 200 OK and returns the new ProfileWithHash", func() {
+						pwh := NewProfileWithHash(testProfile)
+						pwh.Coins = 9999
+
+						postJSON, err := json.Marshal(pwh)
+						Expect(err).ToNot(HaveOccurred())
+
+						req, err := http.NewRequest("PUT", "/"+testProfile.ID, bytes.NewBuffer(postJSON))
+						Expect(err).ToNot(HaveOccurred())
+						req.Header.Set("Content-Type", "application/json")
+						app.engine.ServeHTTP(resp, req)
+
+						result := resp.Result()
+						Expect(result.StatusCode).To(Equal(http.StatusOK))
+
+						body, err := ioutil.ReadAll(resp.Body)
+						Expect(err).ToNot(HaveOccurred())
+
+						var profileWithHash ProfileWithHash
+						err = json.Unmarshal(body, &profileWithHash)
+						Expect(err).ToNot(HaveOccurred())
+
+						Expect(profileWithHash.Hash).ToNot(BeZero())
+						Expect(profileWithHash.Hash).ToNot(Equal(pwh.Hash))
+						Expect(profileWithHash.Coins).To(Equal(pwh.Coins))
+					})
+				})
+
+				Context("When the hash is invalid", func() {
+					It("returns 409 Conflict along with the new ProfileWithHash", func() {
+						postJSON, err := json.Marshal(testProfile)
+						Expect(err).ToNot(HaveOccurred())
+
+						req, err := http.NewRequest("PUT", "/"+testProfile.ID, bytes.NewBuffer(postJSON))
+						Expect(err).ToNot(HaveOccurred())
+						req.Header.Set("Content-Type", "application/json")
+						app.engine.ServeHTTP(resp, req)
+
+						result := resp.Result()
+						Expect(result.StatusCode).To(Equal(http.StatusConflict))
+
+						body, err := ioutil.ReadAll(resp.Body)
+						Expect(err).ToNot(HaveOccurred())
+
+						var profileWithHash ProfileWithHash
+						err = json.Unmarshal(body, &profileWithHash)
+						Expect(err).ToNot(HaveOccurred())
+
+						Expect(profileWithHash.Hash).ToNot(BeZero())
 					})
 				})
 			})
@@ -222,7 +232,7 @@ var _ = Describe("Game profile microservice", func() {
 			})
 
 			Context("POST", func() {
-				It("returns 204 No Content and stores the punishments object", func() {
+				It("returns 204 No Content and stores the punishment object", func() {
 					postJSON, err := json.Marshal(testPunishment)
 					Expect(err).ToNot(HaveOccurred())
 
@@ -238,6 +248,12 @@ var _ = Describe("Game profile microservice", func() {
 					Expect(err).ToNot(HaveOccurred())
 
 					Expect(p).To(Equal(testPunishment))
+				})
+			})
+
+			Context("PUT", func() {
+				PIt("returns 204 No Content and updates the punishments list", func() {
+
 				})
 			})
 		})
