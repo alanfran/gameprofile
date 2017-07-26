@@ -49,7 +49,11 @@ func (s *MockStore) GetPunishments(pid string) (ps map[string]Punishment, err er
 		}
 	}
 
-	return ps, nil
+	if len(ps) == 0 {
+		err = errors.New("No punishments found.")
+	}
+
+	return ps, err
 }
 
 // PutPunishment stores a punishment.

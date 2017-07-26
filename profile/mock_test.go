@@ -14,52 +14,78 @@ var _ = Describe("Mock", func() {
 		s = NewMockStore()
 	})
 
-	It("Stores profiles", func() {
-		p := Profile{
-			ID:        "some_user",
-			Coins:     999,
-			Inventory: map[string]string{},
-			Equipment: map[string]string{},
-		}
+	Context("Profiles", func() {
+		It("Stores profiles", func() {
+			p := Profile{
+				ID:        "some_user",
+				Coins:     999,
+				Inventory: map[string]string{},
+				Equipment: map[string]string{},
+			}
 
-		Expect(s.PutProfile(p)).Should(Succeed())
+			Expect(s.PutProfile(p)).Should(Succeed())
 
-		p2, err := s.GetProfile(p.ID)
-		Expect(err).ToNot(HaveOccurred())
-		Expect(p2).To(Equal(p))
+			p2, err := s.GetProfile(p.ID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(p2).To(Equal(p))
+		})
+
+		Context("When retrieving a nonexistent profile", func() {
+			It("Returns an error", func() {
+				_, err := s.GetProfile("this_does_not_exist")
+				Expect(err).To(HaveOccurred())
+			})
+		})
 	})
 
-	It("Stores and deletes punishments", func() {
-		p := Punishment{
-			ID:       1234,
-			PlayerID: "some_user",
-			By:       "some_admin",
-			Type:     "ban",
-			Reason:   "reason goes here",
-			Date:     time.Now(),
-			Expires:  time.Now().Add(time.Minute * 10),
-		}
+	Context("Punishments", func() {
+		var testPunishment Punishment
+		BeforeEach(func() {
+			testPunishment = Punishment{
+				ID:       1234,
+				PlayerID: "some_user",
+				By:       "some_admin",
+				Type:     "ban",
+				Reason:   "reason goes here",
+				Date:     time.Now(),
+				Expires:  time.Now().Add(time.Minute * 10),
+			}
+		})
 
-		// Store
+		It("Stores and deletes punishments", func() {
 
-		Expect(s.PutPunishment(p)).Should(Succeed())
+			// Store
 
-		// Get
+			Expect(s.PutPunishment(testPunishment)).Should(Succeed())
 
-		ps, err := s.GetPunishments(p.PlayerID)
-		Expect(err).ShouldNot(HaveOccurred())
+			// Get
 
-		p2 := ps[p.Type]
-		Expect(p2).To(Equal(p))
+			ps, err := s.GetPunishments(testPunishment.PlayerID)
+			Expect(err).ShouldNot(HaveOccurred())
 
-		// Delete
+			p2 := ps[testPunishment.Type]
+			Expect(p2).To(Equal(testPunishment))
 
-		Expect(s.DelPunishment(p2.ID)).Should(Succeed())
+			// Delete
 
-		ps2, err := s.GetPunishments(p.PlayerID)
-		Expect(err).ShouldNot(HaveOccurred())
+			Expect(s.DelPunishment(p2.ID)).Should(Succeed())
 
-		_, ok := ps2[p.Type]
-		Expect(ok).To(BeFalse())
+			_, err = s.GetPunishments(testPunishment.PlayerID)
+			Expect(err).Should(HaveOccurred())
+		})
+
+		Context("When a player has no punishments", func() {
+			It("GetPunishments returns an error", func() {
+				_, err := s.GetPunishments("this_user_has_no_punishments")
+				Expect(err).To(HaveOccurred())
+			})
+		})
+
+		Context("When deleting a nonexistent punishment", func() {
+			It("Fails", func() {
+				Expect(s.DelPunishment(9001)).ToNot(Succeed())
+			})
+		})
 	})
+
 })

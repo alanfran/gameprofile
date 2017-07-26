@@ -48,6 +48,13 @@ var _ = Describe("Bolt", func() {
 		Expect(p2).To(Equal(p))
 	})
 
+	Context("When retrieving a nonexistent key", func() {
+		It("Returns an error", func() {
+			_, err := s.GetProfile("this_does_not_exist")
+			Expect(err).To(HaveOccurred())
+		})
+	})
+
 	It("Stores and deletes punishments", func() {
 		p := Punishment{
 			ID:       1234,

@@ -1,23 +1,14 @@
 package main
 
-import (
-	"./profile"
-)
+import "github.com/alanfran/gameprofile/profile"
 
-// port 80
+func main() {
+	boltStore, err := profile.NewBoltStore("bolt.db")
+	if err != nil {
+		panic(err)
+	}
 
-/* routes:
+	a := NewApp(boltStore)
 
-/:steamid
-
-/:steamid/coins
-
-/:steamid/punishments
-
-
-
-*/
-
-type App struct {
-	profiles profile.Storer
+	a.Run(":80")
 }
