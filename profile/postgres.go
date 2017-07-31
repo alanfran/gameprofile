@@ -1,6 +1,10 @@
 package profile
 
-import pg "gopkg.in/pg.v4"
+import (
+	"errors"
+
+	pg "gopkg.in/pg.v4"
+)
 
 // PostgresStore stores a reference to the database and has methods for interacting with it.
 type PostgresStore struct {
@@ -68,6 +72,11 @@ func (s PostgresStore) GetPunishments(steamid string) (map[string]Punishment, er
 	for _, v := range r {
 		m[v.Type] = v
 	}
+
+	if len(m) == 0 {
+		return m, errors.New("No punishments found.")
+	}
+
 	return m, err
 }
 

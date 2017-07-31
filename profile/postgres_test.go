@@ -1,102 +1,151 @@
 package profile
 
 import (
-	"strconv"
-	"testing"
 	"time"
 
 	pg "gopkg.in/pg.v4"
+
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 )
 
-var nt *PostgresStore
-var db *pg.DB
+var _ = Describe("Postgres", func() {
+	var s *PostgresStore
 
-var (
-	dbUser     = "postgres"
-	dbPassword = "postgres"
-	dbDatabase = "test"
-)
+	BeforeEach(func() {
+		db := pg.Connect(&pg.Options{
+			User:     "postgres",
+			Password: "postgres",
+			Database: "test",
+		})
+		// verify connection
+		_, err := db.Exec(`SELECT 1`)
+		if err != nil {
+			panic("Error connecting to the database.")
+		}
 
-func init() {
-	// load test configuration
-	db = pg.Connect(&pg.Options{
-		User:     dbUser,
-		Password: dbPassword,
-		Database: dbDatabase,
+		db.Exec(`
+			DROP TABLE profiles;
+			DROP TABLE punishments;
+		`)
+
+		s = NewPostgresStore(db)
 	})
-	// verify connection
-	_, err := db.Exec(`SELECT 1`)
-	if err != nil {
-		panic("Error connecting to the database.")
-	}
 
-	db.Exec(`
-		DROP TABLE profiles;
-		DROP TABLE punishments;
-	`)
+	AfterEach(func() {
+		Expect(s.db.Close()).To(Succeed())
+	})
 
-	nt = NewPostgresStore(db)
-}
+	Context("Profiles", func() {
+		It("Stores profiles", func() {
+			p := Profile{
+				ID:        "some_user",
+				Coins:     999,
+				Inventory: map[string]string{},
+				Equipment: map[string]string{},
+			}
 
-func TestProfilePg(t *testing.T) {
-	id := "example steamid"
-	coins := int64(64)
-	inventory := map[string]string{"key": "value"}
-	equip := map[string]string{"head": "cowboy hat"}
+			Expect(s.PutProfile(p)).Should(Succeed())
 
-	err := nt.PutProfile(Profile{ID: id, Coins: coins, Inventory: inventory, Equipment: equip})
-	if err != nil {
-		t.Error(err)
-	}
-	p, err := nt.GetProfile(id)
-	if err != nil {
-		t.Error(err)
-	}
+			p2, err := s.GetProfile(p.ID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(p2).To(Equal(p))
+		})
 
-	if p.Coins != coins || p.Inventory["key"] != inventory["key"] || p.Equipment["head"] != equip["head"] {
-		t.Error("coins: " + strconv.Itoa(int(p.Coins)) + " inv: " + p.Inventory["key"])
-	}
-}
+		Context("When retrieving a nonexistent profile", func() {
+			It("Returns an error", func() {
+				_, err := s.GetProfile("this_does_not_exist")
+				Expect(err).To(HaveOccurred())
+			})
+		})
+	})
 
-func TestPunishmentPg(t *testing.T) {
-	steamid := "example id"
-	by := "someAdmin"
-	typ := "rubber hammer"
-	reason := "being bad"
-	date := time.Now()
-	expires := time.Now().AddDate(0, 0, 1)
+	Context("Punishments", func() {
+		var testPunishment Punishment
+		BeforeEach(func() {
+			testPunishment = Punishment{
+				ID:       1234,
+				PlayerID: "some_user",
+				By:       "some_admin",
+				Type:     "ban",
+				Reason:   "reason goes here",
+				Date:     time.Now(),
+				Expires:  time.Now().Add(time.Minute * 10),
+			}
+		})
 
-	p := Punishment{
-		PlayerID: steamid,
-		By:       by,
-		Type:     typ,
-		Reason:   reason,
-		Date:     date,
-		Expires:  expires,
-	}
-	err := nt.PutPunishment(p)
-	if err != nil {
-		t.Error(err)
-	}
+		Context("When storing a punishment", func() {
+			Context("and all required fields are present", func() {
+				It("succeeds", func() {
+					Expect(s.PutPunishment(testPunishment)).Should(Succeed())
+				})
+			})
 
-	punishments, err := nt.GetPunishments(steamid)
-	if err != nil {
-		t.Error(err)
-	}
+			Context("and either the PlayerID, By, or Type are missing", func() {
+				It("fails", func() {
+					incompletePunishments := []Punishment{
+						Punishment{
+							PlayerID: "someone",
+							By:       "an_admin",
+						},
+						Punishment{
+							By:   "an_admin",
+							Type: "ban",
+						},
+						Punishment{
+							PlayerID: "someone",
+							Type:     "ban",
+						},
+					}
 
-	// if punishment[typ] does not exist, error
-	p1, ok := punishments[typ]
-	if !ok {
-		t.Error("Punishment not in GetPunishments return.")
-	}
+					for _, v := range incompletePunishments {
+						Expect(s.PutPunishment(v)).ToNot(Succeed())
+					}
+				})
+			})
+		})
 
-	// if data is not consistent, error
-	if p1.PlayerID != steamid || p1.By != by || p1.Type != typ || p1.Reason != reason {
-		t.Error("Bad data returned.")
-	}
+		Context("When retrieving punishments", func() {
+			Context("and that player has punishments", func() {
+				BeforeEach(func() {
+					Expect(s.PutPunishment(testPunishment)).To(Succeed())
+				})
 
-	err = nt.DelPunishment(p1.ID)
-	if err != nil {
-		t.Error("Failed to delete punishment from db.", err)
-	}
-}
+				It("succeeds", func() {
+					p, err := s.GetPunishments(testPunishment.PlayerID)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(p).ToNot(BeZero())
+				})
+			})
+
+			Context("and that player has no punishments", func() {
+				It("returns an error", func() {
+					_, err := s.GetPunishments("this_user_has_no_punishments")
+					Expect(err).To(HaveOccurred())
+				})
+			})
+		})
+
+		Context("When deleting a punishment", func() {
+			Context("that exists", func() {
+				BeforeEach(func() {
+					Expect(s.PutPunishment(testPunishment)).To(Succeed())
+				})
+
+				It("succeeds", func() {
+					Expect(s.DelPunishment(testPunishment.ID)).To(Succeed())
+					// Verify
+					_, err := s.GetPunishments(testPunishment.PlayerID)
+					Expect(err).To(HaveOccurred())
+				})
+			})
+
+			Context("that does not exist", func() {
+				It("fails", func() {
+					Expect(s.DelPunishment(9001)).ToNot(Succeed())
+				})
+			})
+		})
+	})
+
+})
