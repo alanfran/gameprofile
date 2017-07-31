@@ -113,8 +113,31 @@ var _ = Describe("Game profile microservice", func() {
 						Expect(app.profiles.PutProfile(testProfile)).To(Succeed())
 					})
 
-					PIt("returns 490 Conflict along with the current ProfileWithHash", func() {
+					It("returns 409 Conflict along with the current ProfileWithHash", func() {
+						postJSON, err := json.Marshal(testProfile)
+						Expect(err).ToNot(HaveOccurred())
 
+						req, err := http.NewRequest("POST", "/"+testProfile.ID, bytes.NewBuffer(postJSON))
+						Expect(err).ToNot(HaveOccurred())
+						req.Header.Set("Content-Type", "application/json")
+						app.engine.ServeHTTP(resp, req)
+
+						result := resp.Result()
+						Expect(result.StatusCode).To(Equal(http.StatusConflict))
+
+						body, err := ioutil.ReadAll(resp.Body)
+						Expect(err).ToNot(HaveOccurred())
+
+						var profileWithHash ProfileWithHash
+						var profileWithoutHash profile.Profile
+
+						err = json.Unmarshal(body, &profileWithHash)
+						Expect(err).ToNot(HaveOccurred())
+						Expect(profileWithHash.Hash).ToNot(BeZero())
+
+						err = json.Unmarshal(body, &profileWithoutHash)
+						Expect(err).ToNot(HaveOccurred())
+						Expect(profileWithoutHash).To(Equal(testProfile))
 					})
 				})
 			})
@@ -180,7 +203,8 @@ var _ = Describe("Game profile microservice", func() {
 		})
 
 		Context("/:steamid/punishments", func() {
-			var testPunishment profile.Punishment
+			var testPunishment, testPunishment2 profile.Punishment
+			var testPunishments map[string]profile.Punishment
 
 			BeforeEach(func() {
 				testPunishment = profile.Punishment{
@@ -191,6 +215,21 @@ var _ = Describe("Game profile microservice", func() {
 					Reason:   "testing",
 					Date:     time.Now(),
 					Expires:  time.Now().Add(time.Minute * 10),
+				}
+
+				testPunishment2 = profile.Punishment{
+					ID:       123456,
+					PlayerID: testProfile.ID,
+					By:       "an_admin",
+					Type:     "mute",
+					Reason:   "spamming",
+					Date:     time.Now(),
+					Expires:  time.Now().Add(time.Hour * 24),
+				}
+
+				testPunishments = map[string]profile.Punishment{
+					testPunishment.Type:  testPunishment,
+					testPunishment2.Type: testPunishment2,
 				}
 			})
 
@@ -210,6 +249,8 @@ var _ = Describe("Game profile microservice", func() {
 
 					BeforeEach(func() {
 						Expect(app.profiles.PutPunishment(testPunishment)).To(Succeed())
+						Expect(app.profiles.PutPunishment(testPunishment2)).To(Succeed())
+
 					})
 
 					It("returns 200 Success along with the Punishments", func() {
@@ -226,7 +267,7 @@ var _ = Describe("Game profile microservice", func() {
 						var punishmentResults map[string]profile.Punishment
 						Expect(json.Unmarshal(body, &punishmentResults)).To(Succeed())
 
-						Expect(punishmentResults).To(Equal(map[string]profile.Punishment{testPunishment.Type: testPunishment}))
+						Expect(punishmentResults).To(Equal(testPunishments))
 					})
 				})
 			})
@@ -244,16 +285,34 @@ var _ = Describe("Game profile microservice", func() {
 					result := resp.Result()
 					Expect(result.StatusCode).To(Equal(http.StatusNoContent))
 
+					// Verify it was stored
 					p, err := app.profiles.GetPunishments(testPunishment.PlayerID)
 					Expect(err).ToNot(HaveOccurred())
 
-					Expect(p).To(Equal(testPunishment))
+					Expect(p).To(Equal(map[string]profile.Punishment{
+						testPunishment.Type: testPunishment,
+					}))
 				})
 			})
 
 			Context("PUT", func() {
-				PIt("returns 204 No Content and updates the punishments list", func() {
+				It("returns 204 No Content and updates the punishments list", func() {
+					postJSON, err := json.Marshal(testPunishments)
+					Expect(err).ToNot(HaveOccurred())
 
+					req, err := http.NewRequest("POST", "/"+testProfile.ID+"/punishments", bytes.NewBuffer(postJSON))
+					Expect(err).ToNot(HaveOccurred())
+					req.Header.Set("Content-Type", "application/json")
+					app.engine.ServeHTTP(resp, req)
+
+					result := resp.Result()
+					Expect(result.StatusCode).To(Equal(http.StatusNoContent))
+
+					// Verify they were stored
+					p, err := app.profiles.GetPunishments(testPunishment.PlayerID)
+					Expect(err).ToNot(HaveOccurred())
+
+					Expect(p).To(Equal(testPunishments))
 				})
 			})
 		})
