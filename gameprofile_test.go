@@ -84,7 +84,7 @@ var _ = Describe("Game profile microservice", func() {
 						postJSON, err := json.Marshal(testProfile)
 						Expect(err).ToNot(HaveOccurred())
 
-						req, err := http.NewRequest("POST", "/"+testProfile.ID, bytes.NewBuffer(postJSON))
+						req, err := http.NewRequest("POST", "/", bytes.NewBuffer(postJSON))
 						Expect(err).ToNot(HaveOccurred())
 						req.Header.Set("Content-Type", "application/json")
 						app.engine.ServeHTTP(resp, req)
@@ -117,7 +117,7 @@ var _ = Describe("Game profile microservice", func() {
 						postJSON, err := json.Marshal(testProfile)
 						Expect(err).ToNot(HaveOccurred())
 
-						req, err := http.NewRequest("POST", "/"+testProfile.ID, bytes.NewBuffer(postJSON))
+						req, err := http.NewRequest("POST", "/", bytes.NewBuffer(postJSON))
 						Expect(err).ToNot(HaveOccurred())
 						req.Header.Set("Content-Type", "application/json")
 						app.engine.ServeHTTP(resp, req)
@@ -300,7 +300,7 @@ var _ = Describe("Game profile microservice", func() {
 					postJSON, err := json.Marshal(testPunishments)
 					Expect(err).ToNot(HaveOccurred())
 
-					req, err := http.NewRequest("POST", "/"+testProfile.ID+"/punishments", bytes.NewBuffer(postJSON))
+					req, err := http.NewRequest("PUT", "/"+testProfile.ID+"/punishments", bytes.NewBuffer(postJSON))
 					Expect(err).ToNot(HaveOccurred())
 					req.Header.Set("Content-Type", "application/json")
 					app.engine.ServeHTTP(resp, req)

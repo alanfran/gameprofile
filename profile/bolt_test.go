@@ -32,61 +32,116 @@ var _ = Describe("Bolt", func() {
 		// delete file
 	})
 
-	It("Stores profiles", func() {
-		p := Profile{
-			ID:        "some_user",
-			Coins:     999,
-			Inventory: map[string]string{},
-			Equipment: map[string]string{},
-		}
+	Context("Profiles", func() {
+		It("Stores profiles", func() {
+			p := Profile{
+				ID:        "some_user",
+				Coins:     999,
+				Inventory: map[string]string{},
+				Equipment: map[string]string{},
+			}
 
-		Expect(s.PutProfile(p)).Should(Succeed())
+			Expect(s.PutProfile(p)).Should(Succeed())
 
-		p2, err := s.GetProfile(p.ID)
-		Expect(err).ShouldNot(HaveOccurred())
+			p2, err := s.GetProfile(p.ID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(p2).To(Equal(p))
+		})
 
-		Expect(p2).To(Equal(p))
-	})
-
-	Context("When retrieving a nonexistent key", func() {
-		It("Returns an error", func() {
-			_, err := s.GetProfile("this_does_not_exist")
-			Expect(err).To(HaveOccurred())
+		Context("When retrieving a nonexistent profile", func() {
+			It("Returns an error", func() {
+				_, err := s.GetProfile("this_does_not_exist")
+				Expect(err).To(HaveOccurred())
+			})
 		})
 	})
 
-	It("Stores and deletes punishments", func() {
-		p := Punishment{
-			ID:       1234,
-			PlayerID: "some_user",
-			By:       "some_admin",
-			Type:     "ban",
-			Reason:   "reason goes here",
-			Date:     time.Now(),
-			Expires:  time.Now().Add(time.Minute * 10),
-		}
+	Context("Punishments", func() {
+		var testPunishment Punishment
+		BeforeEach(func() {
+			testPunishment = Punishment{
+				ID:       1234,
+				PlayerID: "some_user",
+				By:       "some_admin",
+				Type:     "ban",
+				Reason:   "reason goes here",
+				Date:     time.Now(),
+				Expires:  time.Now().Add(time.Minute * 10),
+			}
+		})
 
-		// Store
+		Context("When storing a punishment", func() {
+			Context("and all required fields are present", func() {
+				It("succeeds", func() {
+					Expect(s.PutPunishment(testPunishment)).Should(Succeed())
+				})
+			})
 
-		Expect(s.PutPunishment(p)).Should(Succeed())
+			Context("and either the PlayerID, By, or Type are missing", func() {
+				It("fails", func() {
+					incompletePunishments := []Punishment{
+						Punishment{
+							PlayerID: "someone",
+							By:       "an_admin",
+						},
+						Punishment{
+							By:   "an_admin",
+							Type: "ban",
+						},
+						Punishment{
+							PlayerID: "someone",
+							Type:     "ban",
+						},
+					}
 
-		// Get
+					for _, v := range incompletePunishments {
+						Expect(s.PutPunishment(v)).ToNot(Succeed())
+					}
+				})
+			})
+		})
 
-		ps, err := s.GetPunishments(p.PlayerID)
-		Expect(err).ShouldNot(HaveOccurred())
+		Context("When retrieving punishments", func() {
+			Context("and that player has punishments", func() {
+				BeforeEach(func() {
+					Expect(s.PutPunishment(testPunishment)).To(Succeed())
+				})
 
-		p2 := ps[p.Type]
-		Expect(p2).To(Equal(p))
+				It("succeeds", func() {
+					p, err := s.GetPunishments(testPunishment.PlayerID)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(p).ToNot(BeZero())
+				})
+			})
 
-		// Delete
+			Context("and that player has no punishments", func() {
+				It("returns an error", func() {
+					_, err := s.GetPunishments("this_user_has_no_punishments")
+					Expect(err).To(HaveOccurred())
+				})
+			})
+		})
 
-		Expect(s.DelPunishment(p2.ID)).Should(Succeed())
+		Context("When deleting a punishment", func() {
+			Context("that exists", func() {
+				BeforeEach(func() {
+					Expect(s.PutPunishment(testPunishment)).To(Succeed())
+				})
 
-		ps2, err := s.GetPunishments(p.PlayerID)
-		Expect(err).ShouldNot(HaveOccurred())
+				It("succeeds", func() {
+					Expect(s.DelPunishment(testPunishment.ID)).To(Succeed())
+					// Verify
+					_, err := s.GetPunishments(testPunishment.PlayerID)
+					Expect(err).To(HaveOccurred())
+				})
+			})
 
-		_, ok := ps2[p.Type]
-		Expect(ok).To(BeFalse())
+			Context("that does not exist", func() {
+				It("fails", func() {
+					Expect(s.DelPunishment(9001)).ToNot(Succeed())
+				})
+			})
+		})
 	})
 
 })

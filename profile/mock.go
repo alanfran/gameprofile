@@ -58,6 +58,10 @@ func (s *MockStore) GetPunishments(pid string) (ps map[string]Punishment, err er
 
 // PutPunishment stores a punishment.
 func (s *MockStore) PutPunishment(p Punishment) error {
+	if p.PlayerID == "" || p.By == "" || p.Type == "" {
+		return errors.New("PlayerID, By, and Reason fields are required.")
+	}
+
 	if p.ID == 0 {
 		p.ID = s.punishmentsSerial
 		s.punishmentsSerial++

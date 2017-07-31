@@ -74,17 +74,26 @@ func (s *BoltStore) GetPunishments(steamid string) (map[string]Punishment, error
 	err := s.db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte("punishments"))
 		v := b.Get([]byte(steamid))
-		if v == nil {
-			return errors.New("No punishments found for SteamID " + steamid)
-		}
 		return json.Unmarshal(v, &ps)
 	})
+
+	if err != nil {
+		return ps, err
+	}
+
+	if len(ps) == 0 {
+		return ps, errors.New("No punishments found.")
+	}
 
 	return ps, err
 }
 
 func (s *BoltStore) PutPunishment(p Punishment) error {
 	var ps map[string]Punishment
+
+	if p.PlayerID == "" || p.By == "" || p.Type == "" {
+		return errors.New("PlayerID, By, and Type are required fields.")
+	}
 
 	ps, err := s.GetPunishments(p.PlayerID)
 	if err != nil {
@@ -109,8 +118,9 @@ func (s *BoltStore) PutPunishment(p Punishment) error {
 func (s *BoltStore) DelPunishment(pid int64) error {
 	return s.db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte("punishments"))
+		found := false
 
-		return b.ForEach(func(k, v []byte) error {
+		err := b.ForEach(func(k, v []byte) error {
 			var ps map[string]Punishment
 			err := json.Unmarshal(v, &ps)
 			if err != nil {
@@ -118,6 +128,7 @@ func (s *BoltStore) DelPunishment(pid int64) error {
 			}
 			for _, v := range ps {
 				if v.ID == pid {
+					found = true
 					delete(ps, v.Type)
 					j, err := json.Marshal(ps)
 					if err != nil {
@@ -129,5 +140,15 @@ func (s *BoltStore) DelPunishment(pid int64) error {
 			}
 			return err
 		})
+
+		if err != nil {
+			return err
+		}
+
+		if !found {
+			return errors.New("Punishment not found.")
+		}
+
+		return err
 	})
 }
