@@ -54,15 +54,12 @@ var _ = Describe("Game profile microservice", func() {
 						Expect(err).ToNot(HaveOccurred())
 
 						var profileWithHash ProfileWithHash
-						var profileWithoutHash profile.Profile
 
 						err = json.Unmarshal(body, &profileWithHash)
 						Expect(err).ToNot(HaveOccurred())
 						Expect(profileWithHash.Hash).ToNot(BeZero())
 
-						err = json.Unmarshal(body, &profileWithoutHash)
-						Expect(err).ToNot(HaveOccurred())
-						Expect(profileWithoutHash).To(Equal(testProfile))
+						Expect(profileWithHash.Profile).To(Equal(testProfile))
 					})
 				})
 
@@ -96,15 +93,12 @@ var _ = Describe("Game profile microservice", func() {
 						Expect(err).ToNot(HaveOccurred())
 
 						var profileWithHash ProfileWithHash
-						var profileWithoutHash profile.Profile
 
 						err = json.Unmarshal(body, &profileWithHash)
 						Expect(err).ToNot(HaveOccurred())
 						Expect(profileWithHash.Hash).ToNot(BeZero())
 
-						err = json.Unmarshal(body, &profileWithoutHash)
-						Expect(err).ToNot(HaveOccurred())
-						Expect(profileWithoutHash).To(Equal(testProfile))
+						Expect(profileWithHash.Profile).To(Equal(testProfile))
 					})
 				})
 
@@ -129,15 +123,12 @@ var _ = Describe("Game profile microservice", func() {
 						Expect(err).ToNot(HaveOccurred())
 
 						var profileWithHash ProfileWithHash
-						var profileWithoutHash profile.Profile
 
 						err = json.Unmarshal(body, &profileWithHash)
 						Expect(err).ToNot(HaveOccurred())
 						Expect(profileWithHash.Hash).ToNot(BeZero())
 
-						err = json.Unmarshal(body, &profileWithoutHash)
-						Expect(err).ToNot(HaveOccurred())
-						Expect(profileWithoutHash).To(Equal(testProfile))
+						Expect(profileWithHash.Profile).To(Equal(testProfile))
 					})
 				})
 			})
